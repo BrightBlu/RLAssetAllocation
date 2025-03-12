@@ -104,7 +104,9 @@ def main():
     
     # Initialize environment and agent
     env = MarketEnvironment(config)
-    agent = MCAgent(config)
+    if config.get('agent', {}).get('type', '') == 'mc':
+        print('Using Monte Carlo Agent')
+        agent = MCAgent(config)
     
     # Training parameters
     n_episodes = config.get('training', {}).get('n_episodes', 1000)
