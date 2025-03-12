@@ -7,7 +7,7 @@
         "risk_free_rate": 0.02,
         "alpha": 0.5,
         "gamma": 0.99,
-        "T": 252,
+        "T": 10,
         "initial_wealth": 10000
     },
     "agent": {
