@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Tuple
 import numpy as np
 from environments.market_environment import MarketEnvironment
 
-class MCAgent:
+class Agent:
     """Monte Carlo agent for asset allocation.
     
     This agent implements Monte Carlo methods for policy evaluation and improvement.
