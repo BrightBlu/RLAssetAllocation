@@ -14,14 +14,13 @@
         "type": "mc",
         "learning_rate": 0.01,
         "gamma": 0.9,
-        "epsilon": 0.05,
-        "n_actions": 10
+        "epsilon": 0.5
     },
     "training": {
-        "n_episodes": 20000,
+        "n_episodes": 500000,
         "save_interval": 1000,
         "eval_interval": 500,
-        "random_seed": 42
+        "random_seed": 41
     },
     "paths": {
         "data_dir": "data",

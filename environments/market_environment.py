@@ -60,18 +60,23 @@ class MarketEnvironment:
             - Whether episode is done
             - Dictionary of additional information
         """
-        # Ensure action is within valid range
-        action = np.clip(action, 0, 1)
-
         # Generate risky asset return
         risky_return = self.risky_return_a if np.random.random() < self.risky_return_p else self.risky_return_b
 
         # Calculate portfolio return
-        portfolio_return = action * (1 + risky_return) + (1 - action) * (1 + self.risk_free_rate)
-
-        # Update wealth
+        # action represents the amount of wealth invested in risky asset (can be negative for short selling)
+        risky_investment = action
+        risk_free_investment = self.wealth - risky_investment
+        
+        # Store old wealth for info
         old_wealth = self.wealth
-        self.wealth *= portfolio_return
+        
+        # Update total wealth
+        self.wealth = risky_investment * (1 + risky_return) + risk_free_investment * (1 + self.risk_free_rate)
+        
+        # Calculate portfolio return
+        portfolio_return = (self.wealth - old_wealth) / old_wealth
+        
         self.current_step += 1
 
         # Check if episode is done
@@ -84,7 +89,7 @@ class MarketEnvironment:
             reward = 0  # Zero reward for intermediate steps, utility reward only at final step
 
         # Prepare observation and info
-        observation = np.array([self.wealth, self.T - self.current_step])
+        observation = np.array([self.wealth, self.T - self.current_step], dtype=np.float32)
         info = {
             'portfolio_return': portfolio_return,
             'risky_return': risky_return,
@@ -102,10 +107,12 @@ class MarketEnvironment:
     def action_space(self) -> Tuple[float, float]:
         """Return the action space bounds.
         
-        Action space is continuous values in [0,1], representing the proportion
-        of wealth invested in the risky asset.
+        Action space is continuous values in R, representing the actual amount
+        of wealth invested in the risky asset. Negative values indicate short selling.
         """
-        return (0.0, 1.0)
+        # Using a multiple of initial wealth as bounds for practical purposes
+        max_investment = self.initial_wealth * 5
+        return (-max_investment, max_investment)
 
     @property
     def state_space(self) -> int:

@@ -1,6 +1,7 @@
 from typing import Dict, Any, List, Tuple
 import numpy as np
 from environments.market_environment import MarketEnvironment
+from tqdm import tqdm
 
 class Agent:
     """SARSA agent for asset allocation.
@@ -18,39 +19,74 @@ class Agent:
                 - epsilon: Exploration rate for epsilon-greedy policy
                 - gamma: Discount factor
                 - learning_rate: Learning rate for TD update
-                - n_actions: Number of discrete actions
-                - n_wealth_bins: Number of bins for wealth discretization
         """
         agent_config = config.get('agent', {})
         env_config = config.get('environment', {})
         self.epsilon = agent_config.get('epsilon', 0.1)
         self.gamma = agent_config.get('gamma', 0.99)
         self.learning_rate = agent_config.get('learning_rate', 0.01)
-        self.n_actions = agent_config.get('n_actions', 10)  # Discretize action space
-        self.n_wealth_bins = agent_config.get('n_wealth_bins', 100)  # Number of wealth bins
         self.initial_wealth = env_config.get('initial_wealth', 1)  # Initial wealth from environment config
-        self.action_space: np.ndarray = np.linspace(0, 1, self.n_actions)  # Discrete action space
-        self.q_table: Dict[Tuple[int, int], np.ndarray] = {}  # State-action value table
-        self.policy: Dict[Tuple[int, int], np.ndarray] = {}  # Policy table
+        self.q_table: Dict[Tuple[Tuple[int, int], int], Dict[Tuple[int, int], float]] = {}  # State-action value table
+        self.policy: Dict[Tuple[Tuple[int, int], int], Tuple[int, int]] = {}  # Policy table
+        # Training metrics
+        self.returns = []
+        self.epsilons = []
+        self.wealth_history = []
+        self.action_history = []
         
-    def _discretize_state(self, state: np.ndarray) -> Tuple[int, int]:
+    def _discretize_state(self, state: np.ndarray) -> Tuple[Tuple[int, int], int]:
         """Discretize the continuous state space.
         
         Args:
             state: Current state observation [current wealth, remaining time steps]
             
         Returns:
-            Tuple of (discretized_wealth_index, time_step)
+            Tuple of ((sign, log_value), time_step)
         """
-        wealth, time = state
-        # Discretize wealth using logarithmic bins
-        min_wealth = 0.1  # Lower bound for wealth
-        max_wealth = self.initial_wealth * 5  # Assume max wealth is 5x initial
-        log_wealth = np.log(max(wealth, min_wealth))
-        log_bins = np.linspace(np.log(min_wealth), np.log(max_wealth), self.n_wealth_bins)
-        wealth_idx = np.digitize(log_wealth, log_bins) - 1
-        return (int(wealth_idx), int(time))
+        state_value = state[0]  # Use wealth as state value
+        time_step = int(state[1])  # Get time step
+        
+        if state_value >= 0:
+            sign = 1
+            log_value = np.clip(round(np.log(state_value)), -8, 8)
+        else:
+            sign = 0
+            log_value = np.clip(round(np.log(abs(state_value))), -8, 8)
 
+        return ((sign, int(log_value)), time_step)
+
+    def _action_to_xt(self, action: Tuple[int, int]) -> float:
+        """Convert discrete action to continuous portfolio weight.
+        
+        Args:
+            action: Tuple of (sign, log_value) where sign is 0 or 1 and log_value is in [-8, 8]
+            
+        Returns:
+            Portfolio weight as a float value
+        """
+        sign, log_value = action
+        if sign == 1:
+            return np.exp(log_value)
+        else:
+            return -np.exp(log_value)
+    
+    def _xt_to_action(self, xt: float) -> Tuple[int, int]:
+        """Convert continuous portfolio weight to discrete action.
+        
+        Args:
+            xt: Portfolio weight as a float value
+            
+        Returns:
+            Tuple of (sign, log_value)
+        """
+        if xt >= 0:
+            sign = 1
+            log_value = np.clip(round(np.log(xt)), -8, 8)
+        else:
+            sign = 0
+            log_value = np.clip(round(np.log(abs(xt))), -8, 8)
+        return (sign, int(log_value))
+    
     def select_action(self, state: np.ndarray) -> float:
         """Choose an action based on the current state and policy.
 
@@ -61,7 +97,10 @@ class Agent:
             Action to take
         """
         if np.random.uniform(0, 1) < self.epsilon:
-            return np.random.choice(self.action_space)  # Explore
+            # Random discrete action
+            sign = np.random.choice([0, 1])
+            log_value = np.random.randint(-8, 9)
+            return self._action_to_xt((sign, log_value))  # Convert to continuous action
         else:
             return self.get_best_action(state)  # Exploit
 
@@ -73,13 +112,15 @@ class Agent:
             Best action for the given state
         """
         state_key = self._discretize_state(state)
-        if state_key in self.q_table:
-            return self.action_space[np.argmax(self.q_table[state_key])]
+        if state_key in self.policy:
+            return self._action_to_xt(self.policy[state_key])
         else:
             # Initialize state entry in Q-table and policy
-            self.q_table[state_key] = np.zeros(self.n_actions)
-            self.policy[state_key] = np.ones(self.n_actions) / self.n_actions
-            return np.random.choice(self.action_space)
+            sign = np.random.choice([0, 1])
+            log_value = np.random.randint(-8, 9)
+            self.policy[state_key] = (sign, log_value)
+            self.q_table[state_key] = {}
+            return self._action_to_xt(self.policy[state_key])
 
     def train(self, env: MarketEnvironment, n_episodes: int) -> Dict[str, List]:
         """Train the agent using SARSA method.
@@ -91,12 +132,7 @@ class Agent:
         Returns:
             Dictionary containing training metrics
         """
-        returns = []
-        epsilons = []
-        wealth_history = []
-        action_history = []
-        
-        for episode in range(n_episodes):
+        for episode in tqdm(range(n_episodes)):
             state = env.reset()
             done = False
             episode_rewards = []
@@ -116,31 +152,44 @@ class Agent:
                 # SARSA update
                 state_key = self._discretize_state(state)
                 next_state_key = self._discretize_state(next_state)
-                action_idx = np.argmax(self.action_space == action)
-                next_action_idx = np.argmax(self.action_space == next_action)
+                discrete_action = self._xt_to_action(action)
+                discrete_next_action = self._xt_to_action(next_action)
                 
                 # Initialize state-action values if not exists
                 if state_key not in self.q_table:
-                    self.q_table[state_key] = np.zeros(self.n_actions)
-                    self.policy[state_key] = np.ones(self.n_actions) / self.n_actions
+                    self.q_table[state_key] = {}
+                    self.policy[state_key] = discrete_action
                 if next_state_key not in self.q_table:
-                    self.q_table[next_state_key] = np.zeros(self.n_actions)
-                    self.policy[next_state_key] = np.ones(self.n_actions) / self.n_actions
+                    self.q_table[next_state_key] = {}
+                    self.policy[next_state_key] = discrete_next_action
+                if discrete_action not in self.q_table[state_key]:
+                    self.q_table[state_key][discrete_action] = 0.0
+                if discrete_next_action not in self.q_table[next_state_key]:
+                    self.q_table[next_state_key][discrete_next_action] = 0.0
                 
                 # Q-value update using SARSA
                 target = reward
                 if not done:
-                    target += self.gamma * self.q_table[next_state_key][next_action_idx]
-                current = self.q_table[state_key][action_idx]
-                self.q_table[state_key][action_idx] = current + self.learning_rate * (target - current)
+                    target += self.gamma * self.q_table[next_state_key][discrete_next_action]
+                current = self.q_table[state_key][discrete_action]
+                self.q_table[state_key][discrete_action] = current + self.learning_rate * (target - current)
                 
                 # Policy improvement
-                best_action_idx = np.argmax(self.q_table[state_key])
-                for a_idx in range(self.n_actions):
-                    if a_idx == best_action_idx:
-                        self.policy[state_key][a_idx] = 1 - (self.n_actions - 1) / self.n_actions * self.epsilon
-                    else:
-                        self.policy[state_key][a_idx] = self.epsilon / self.n_actions
+                if np.random.uniform(0, 1) < self.epsilon:
+                    # Random discrete action
+                    sign = np.random.choice([0, 1])
+                    log_value = np.random.randint(-8, 9)
+                    self.policy[state_key] = (sign, log_value)
+                else:
+                    # Choose action with highest Q-value
+                    best_action = None
+                    best_value = float('-inf')
+                    for act, q_value in self.q_table[state_key].items():
+                        if q_value > best_value:
+                            best_value = q_value
+                            best_action = act
+                    if best_action is not None:
+                        self.policy[state_key] = best_action
                 
                 # Record step information
                 episode_rewards.append(reward)
@@ -152,16 +201,16 @@ class Agent:
                 action = next_action
             
             # Record episode metrics
-            returns.append(sum(episode_rewards))
-            epsilons.append(self.epsilon)
-            wealth_history.append(episode_wealth)
-            action_history.append(episode_actions)
+            self.returns.append(sum(episode_rewards))
+            self.epsilons.append(self.epsilon)
+            self.wealth_history.append(episode_wealth)
+            self.action_history.append(episode_actions)
         
         return {
-            'returns': returns,
-            'epsilons': epsilons,
-            'wealth_history': wealth_history,
-            'action_history': action_history
+            'returns': self.returns,
+            'epsilons': self.epsilons,
+            'wealth_history': self.wealth_history,
+            'action_history': self.action_history
         }
     
     def save(self, path: str):

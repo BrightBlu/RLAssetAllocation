@@ -24,10 +24,10 @@ def train(env: MarketEnvironment, agent, n_episodes: int):
     action_history = metrics['action_history']
     
     # Save intermediate results every 100 episodes
-    for episode in range(100, n_episodes + 1, 100):
-        save_results(returns[:episode], epsilons[:episode],
-                    wealth_history[:episode], action_history[:episode],
-                    episode, Path('results/intermediate'))
+    # for episode in range(100, n_episodes + 1, 100):
+    #     save_results(returns[:episode], epsilons[:episode],
+    #                 wealth_history[:episode], action_history[:episode],
+    #                 episode, Path('results/intermediate'))
     
     return returns, epsilons, wealth_history, action_history
 
@@ -58,53 +58,67 @@ def save_results(returns, epsilons, wealth_history, action_history, episode, sav
     np.save(save_dir / 'wealth_history.npy', wealth_history)
     np.save(save_dir / 'action_history.npy', action_history)
     
-    # Create visualizations
-    fig = plt.figure(figsize=(15, 10))
+    # # Create visualizations
+    # fig = plt.figure(figsize=(15, 10))
     
-    # Plot returns with moving average and standard deviation
-    ax1 = plt.subplot(221)
-    window_size = 100  # Moving average window size
-    returns_array = np.array(returns)
-    ma = np.convolve(returns_array, np.ones(window_size)/window_size, mode='valid')
-    std = np.array([np.std(returns_array[max(0, i-window_size):i]) for i in range(window_size, len(returns_array)+1)])
-    episodes = np.arange(window_size-1, len(returns_array))
+    # # Plot returns with moving average and standard deviation
+    # ax1 = plt.subplot(221)
+    # window_size = min(100, len(returns))  # Adjust window size based on available data
+    # returns_array = np.array(returns)
     
-    ax1.plot(episodes, ma, 'b-', label='Moving Average', linewidth=2)
-    ax1.fill_between(episodes, ma - std, ma + std, color='b', alpha=0.2, label='Standard Deviation')
-    ax1.set_xlabel('Episodes')
-    ax1.set_ylabel('Cumulative Return')
-    ax1.set_title('Training Return Curve')
-    ax1.grid(True)
-    ax1.legend()
+    # if len(returns_array) >= window_size:
+    #     ma = np.convolve(returns_array, np.ones(window_size)/window_size, mode='valid')
+    #     std = np.array([np.std(returns_array[max(0, i-window_size):i]) for i in range(window_size, len(returns_array)+1)])
+    #     episodes = np.arange(window_size-1, len(returns_array))
+        
+    #     ax1.plot(episodes, ma, 'b-', label='Moving Average', linewidth=2)
+    #     ax1.fill_between(episodes, ma - std, ma + std, color='b', alpha=0.2, label='Standard Deviation')
+    # else:
+    #     # If we don't have enough data for moving average, just plot the raw returns
+    #     episodes = np.arange(len(returns_array))
+    #     ax1.plot(episodes, returns_array, 'b-', label='Returns', linewidth=2)
+    # ax1.set_xlabel('Episodes')
+    # ax1.set_ylabel('Cumulative Return')
+    # ax1.set_title('Training Return Curve')
+    # ax1.grid(True)
+    # ax1.legend()
     
-    # Plot epsilon
-    ax2 = plt.subplot(222)
-    ax2.plot(epsilons)
-    ax2.set_xlabel('Episodes')
-    ax2.set_ylabel('Exploration Rate')
-    ax2.set_title('Exploration Rate Curve')
-    ax2.grid(True)
+    # # Plot epsilon
+    # ax2 = plt.subplot(222)
+    # ax2.plot(epsilons)
+    # ax2.set_xlabel('Episodes')
+    # ax2.set_ylabel('Exploration Rate')
+    # ax2.set_title('Exploration Rate Curve')
+    # ax2.grid(True)
     
-    # Plot wealth trajectories
-    ax3 = plt.subplot(223)
-    for wealth in wealth_history[-10:]:  # Plot last 10 episodes
-        ax3.plot(wealth)
-    ax3.set_xlabel('Time Steps')
-    ax3.set_ylabel('Wealth')
-    ax3.set_title('Last 10 Episodes Wealth Trajectories')
-    ax3.grid(True)
+    # # Plot wealth trajectories
+    # ax3 = plt.subplot(223)
+    # for wealth in wealth_history[-10:]:  # Plot last 10 episodes
+    #     ax3.plot(wealth)
+    # ax3.set_xlabel('Time Steps')
+    # ax3.set_ylabel('Wealth')
+    # ax3.set_title('Last 10 Episodes Wealth Trajectories')
+    # ax3.grid(True)
     
-    # Plot action distribution
-    ax4 = plt.subplot(224)
-    actions = np.concatenate(action_history[-10:])
-    ax4.hist(actions, bins=20, range=(0, 1))
-    ax4.set_xlabel('Risky Asset Allocation Ratio')
-    ax4.set_ylabel('Frequency')
-    ax4.set_title('Last 10 Episodes Action Distribution')
+    # # Plot actions for last 10 episodes
+    # ax4 = plt.subplot(224)
+    # last_10_actions = action_history[-10:]
+    # # Plot each episode's actions with improved visualization
+    # colors = plt.cm.viridis(np.linspace(0, 1, len(last_10_actions)))
+    # for i, actions in enumerate(last_10_actions):
+    #     time_steps = np.arange(len(actions))
+    #     ax4.plot(time_steps, actions, color=colors[i], linewidth=1.5, alpha=0.8, 
+    #              label=f'Episode {len(action_history)-10+i+1}')
+    # ax4.set_xlabel('Time Steps')
+    # ax4.set_ylabel('Investment Position')
+    # ax4.set_title('Investment Positions Over Time (Last 10 Episodes)')
+    # ax4.grid(True, alpha=0.3)
+    # ax4.legend(bbox_to_anchor=(1.05, 1), loc='upper left', framealpha=0.9)
+
     
-    plt.tight_layout()
-    plt.savefig(save_dir / f'training_results_ep{episode}.png')
-    plt.close()
+    # plt.tight_layout()
+    # plt.savefig(save_dir / f'training_results_ep{episode}.png')
+    # plt.close()
 
 def main():
     # Parse command line arguments
