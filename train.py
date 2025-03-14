@@ -131,6 +131,8 @@ def main():
         from agents.sarsa_agent import Agent
     if config.get('agent', {}).get('type') =='qlearning':
         from agents.qlearning_agent import Agent
+    if config.get('agent', {}).get('type') =='dqn':
+        from agents.dqn_agent import Agent
     
     agent = Agent(config)
     
