@@ -6,7 +6,7 @@ class MCAgent:
     """Monte Carlo agent for asset allocation.
     
     This agent implements Monte Carlo methods for policy evaluation and improvement.
-    It uses epsilon-greedy exploration and maintains state-action value estimates.
+    It uses epsilon-greedy exploration and maintains state-action value estimates based on sampling.
     """
     
     def __init__(self, config: Dict[str, Any]):
@@ -17,138 +17,170 @@ class MCAgent:
                 - epsilon: Exploration rate for epsilon-greedy policy
                 - gamma: Discount factor
                 - n_actions: Number of discrete actions
-                - learning_rate: Learning rate for value function updates
+                - n_wealth_bins: Number of bins for wealth discretization
         """
         agent_config = config.get('agent', {})
+        env_config = config.get('environment', {})
         self.epsilon = agent_config.get('epsilon', 0.1)
         self.gamma = agent_config.get('gamma', 0.99)
         self.n_actions = agent_config.get('n_actions', 10)  # Discretize action space
-        self.learning_rate = agent_config.get('learning_rate', 0.01)
+        self.n_wealth_bins = agent_config.get('n_wealth_bins', 100)  # Number of wealth bins
+        self.initial_wealth = env_config.get('initial_wealth', 1)  # Initial wealth from environment config
+        self.action_space: np.ndarray = np.linspace(0, 1, self.n_actions)  # Discrete action space
+        self.q_table: Dict[Tuple[int, int], np.ndarray] = {}  # State-action value table
+        self.returns: Dict[Tuple[int, int], Dict[int, List[float]]] = {}  # Returns for each state-action pair
+        self.policy: Dict[Tuple[int, int], np.ndarray] = {}  # Policy table
         
-        # Initialize state-action value table
-        self.q_table = {}
-        self.returns = {}
-        self.episode_history: List[Tuple] = []
-    
     def _discretize_state(self, state: np.ndarray) -> Tuple[int, int]:
-        """Convert continuous state to discrete state for table lookup.
+        """Discretize the continuous state space.
         
         Args:
-            state: Continuous state array [wealth, remaining_time]
+            state: Current state observation [current wealth, remaining time steps]
             
         Returns:
-            Tuple of discretized (wealth_level, time_step)
+            Tuple of (discretized_wealth_index, time_step)
         """
         wealth, time = state
-        # Discretize wealth into 100 levels
-        wealth_level = int(np.clip(wealth / 100, 0, 99))
-        return (wealth_level, int(time))
-    
-    def _get_action_from_value(self, state: Tuple[int, int], explore: bool = True) -> float:
-        """Select action using epsilon-greedy policy.
-        
-        Args:
-            state: Discretized state tuple
-            explore: Whether to use exploration
-            
-        Returns:
-            Selected action (proportion of wealth in risky asset)
-        """
-        if explore and np.random.random() < self.epsilon:
-            # Random exploration
-            return np.random.random()
-        
-        # Get Q-values for this state
-        if state not in self.q_table:
-            self.q_table[state] = np.zeros(self.n_actions)
-        
-        # Select best action
-        action_idx = np.argmax(self.q_table[state])
-        return action_idx / (self.n_actions - 1)  # Convert to [0,1] range
-    
+        # Discretize wealth using logarithmic bins
+        min_wealth = 0.1  # Lower bound for wealth
+        max_wealth = self.initial_wealth * 5  # Assume max wealth is 5x initial
+        log_wealth = np.log(max(wealth, min_wealth))
+        log_bins = np.linspace(np.log(min_wealth), np.log(max_wealth), self.n_wealth_bins)
+        wealth_idx = np.digitize(log_wealth, log_bins) - 1
+        return (int(wealth_idx), int(time))
+
     def select_action(self, state: np.ndarray) -> float:
-        """Select action for given state using current policy.
+        """Choose an action based on the current state and policy.
+
+        Args:
+            state: Current state observation [current wealth, remaining time steps]
+
+        Returns:
+            Action to take
+        """
+        if np.random.uniform(0, 1) < self.epsilon:
+            return np.random.choice(self.action_space)  # Explore
+        else:
+            return self.get_best_action(state)  # Exploit
+
+    def get_best_action(self, state: np.ndarray) -> float:
+        """Get the best action for a given state based on the Q-table.
+        Args:
+            state: Current state observation [current wealth, remaining time steps]
+        Returns:
+            Best action for the given state
+        """
+        state_key = self._discretize_state(state)
+        if state_key in self.q_table:
+            return self.action_space[np.argmax(self.q_table[state_key])]
+        else:
+            # Initialize state entry in Q-table and policy
+            self.q_table[state_key] = np.zeros(self.n_actions)
+            self.policy[state_key] = np.ones(self.n_actions) / self.n_actions
+            return np.random.choice(self.action_space)
+
+    def train(self, env: MarketEnvironment, n_episodes: int) -> Dict[str, List]:
+        """Train the agent using Monte Carlo every-visit method.
         
         Args:
-            state: Environment state observation
+            env: Market environment instance
+            n_episodes: Number of episodes to train
             
         Returns:
-            Selected action value
+            Dictionary containing training metrics
         """
-        discrete_state = self._discretize_state(state)
-        return self._get_action_from_value(discrete_state)
-    
-    def store_transition(self, state: np.ndarray, action: float, reward: float,
-                        next_state: np.ndarray, done: bool) -> None:
-        """Store transition for episode history.
+        returns = []
+        epsilons = []
+        wealth_history = []
+        action_history = []
         
-        Args:
-            state: Current state
-            action: Action taken
-            reward: Reward received
-            next_state: Next state
-            done: Whether episode is done
-        """
-        discrete_state = self._discretize_state(state)
-        action_idx = int(action * (self.n_actions - 1))
-        self.episode_history.append((discrete_state, action_idx, reward))
-    
-    def update(self) -> Dict[str, float]:
-        """Update value functions using episode history.
-        
-        Returns:
-            Dictionary with training metrics
-        """
-        if not self.episode_history:
-            return {}
-        
-        # Calculate returns for each step
-        G = 0
-        for t in reversed(range(len(self.episode_history))):
-            state, action, reward = self.episode_history[t]
-            G = reward + self.gamma * G
+        for episode in range(n_episodes):
+            # Episode generation
+            state = env.reset()
+            done = False
+            episode_states = []
+            episode_actions = []
+            episode_rewards = []
+            episode_wealth = [state[0]]
             
-            # Store state-action return
-            if (state, action) not in self.returns:
-                self.returns[(state, action)] = []
-            self.returns[(state, action)].append(G)
+            while not done:
+                action = self.select_action(state)
+                next_state, reward, done, info = env.step(action)
+                
+                episode_states.append(state)
+                episode_actions.append(action)
+                episode_rewards.append(reward)
+                episode_wealth.append(next_state[0])
+                
+                state = next_state
+
+                # print(f"Episode {episode}, Step {len(episode_states)}, Action: {action}, Reward: {reward}, Next State: {next_state}")
+                # print(f"Q-table for next state: {self.q_table.get(self._discretize_state(next_state), np.zeros(self.n_actions))}")
+
+            # print(episode_states)
+            # print(episode_rewards)
             
-            # Update Q-value
-            if state not in self.q_table:
-                self.q_table[state] = np.zeros(self.n_actions)
+            # Policy evaluation and improvement using every-visit MC
+            G = 0
+            for t in range(len(episode_states) - 1, -1, -1):
+                G = self.gamma * G + episode_rewards[t]
+                state = episode_states[t]
+                action = episode_actions[t]
+                state_key = self._discretize_state(state)
+                action_idx = np.argmax(self.action_space == action)
+                
+                # Initialize state-action value if not exists
+                if state_key not in self.returns:
+                    self.returns[state_key] = {}
+                    self.q_table[state_key] = np.zeros(self.n_actions)
+                    self.policy[state_key] = np.ones(self.n_actions) / self.n_actions
+                if action_idx not in self.returns[state_key]:
+                    self.returns[state_key][action_idx] = []
+                
+                # Update returns and Q-value
+                self.returns[state_key][action_idx].append(G)
+                self.q_table[state_key][action_idx] = np.mean(self.returns[state_key][action_idx])
+                
+                # Policy improvement
+                best_action_idx = np.argmax(self.q_table[state_key])
+                for a_idx in range(self.n_actions):
+                    if a_idx == best_action_idx:
+                        self.policy[state_key][a_idx] = 1 - (self.n_actions - 1) / self.n_actions * self.epsilon
+                    else:
+                        self.policy[state_key][a_idx] = self.epsilon / self.n_actions
             
-            # Incremental update
-            old_q = self.q_table[state][action]
-            self.q_table[state][action] = old_q + self.learning_rate * (G - old_q)
-        
-        # Clear episode history
-        episode_return = sum(x[2] for x in self.episode_history)
-        self.episode_history = []
+            # Record metrics
+            returns.append(sum(episode_rewards))
+            epsilons.append(self.epsilon)
+            wealth_history.append(episode_wealth)
+            action_history.append(episode_actions)
         
         return {
-            'episode_return': episode_return,
-            'epsilon': self.epsilon
+            'returns': returns,
+            'epsilons': epsilons,
+            'wealth_history': wealth_history,
+            'action_history': action_history
         }
     
-    def save(self, path: str) -> None:
-        """Save agent state to file.
+    def save(self, path: str):
+        """Save the agent's Q-table and policy to a file.
         
         Args:
-            path: Path to save file
+            path: Path to save the agent's data
         """
         np.save(path, {
             'q_table': self.q_table,
-            'returns': self.returns,
-            'epsilon': self.epsilon
+            'policy': self.policy,
+            'returns': self.returns
         })
     
-    def load(self, path: str) -> None:
-        """Load agent state from file.
+    def load(self, path: str):
+        """Load the agent's Q-table and policy from a file.
         
         Args:
-            path: Path to load file
+            path: Path to load the agent's data from
         """
         data = np.load(path, allow_pickle=True).item()
         self.q_table = data['q_table']
+        self.policy = data['policy']
         self.returns = data['returns']
-        self.epsilon = data['epsilon']

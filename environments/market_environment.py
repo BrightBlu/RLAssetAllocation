@@ -32,7 +32,7 @@ class MarketEnvironment:
         self.alpha = env_config.get('alpha', 0.5)
         self.gamma = env_config.get('gamma', 0.99)
         self.T = env_config.get('T', 10)
-        self.initial_wealth = env_config.get('initial_wealth', 10000)
+        self.initial_wealth = env_config.get('initial_wealth', 1)
         
         self.current_step = 0
         self.wealth = self.initial_wealth
