@@ -4,3 +4,4 @@ rl_asset_allocation.egg-info/requires.txt
 rl_asset_allocation.egg-info/SOURCES.txt
 rl_asset_allocation.egg-info/top_level.txt
 agents/__pycache__
+environments/__pycache__
