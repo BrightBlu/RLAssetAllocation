@@ -5,18 +5,17 @@ import matplotlib.pyplot as plt
 import os
 from pathlib import Path
 from environments.market_environment import MarketEnvironment
-from agents.mc_agent import MCAgent
+
 
 def load_config(config_path: str):
     """Load configuration from JSON file."""
     with open(config_path, 'r') as f:
         return json.load(f)
 
-def train(env: MarketEnvironment, agent: MCAgent, n_episodes: int):
+def train(env: MarketEnvironment, agent, n_episodes: int):
     """Train the agent for specified number of episodes."""
-    print('Starting training...')
-    
-    # Train agent using Monte Carlo method
+
+
     metrics = agent.train(env, n_episodes)
     
     returns = metrics['returns']
@@ -126,7 +125,14 @@ def main():
     
     # Initialize environment and agent
     env = MarketEnvironment(config)
-    agent = MCAgent(config)
+    if config.get('agent', {}).get('type') == 'mc':
+        from agents.mc_agent import Agent
+    if config.get('agent', {}).get('type') =='sarsa':
+        from agents.sarsa_agent import Agent
+    if config.get('agent', {}).get('type') =='qlearning':
+        from agents.qlearning_agent import Agent
+    
+    agent = Agent(config)
     
     # Training parameters
     n_episodes = config.get('training', {}).get('n_episodes', 1000)
