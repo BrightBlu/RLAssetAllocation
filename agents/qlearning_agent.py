@@ -33,9 +33,10 @@ class Agent:
         self.epsilons: List[float] = []
         self.wealth_history: List[List[float]] = []
         self.action_history: List[List[float]] = []
+        self.td_errors: List[float] = []  # Track TD errors for each episode
         
         # Predefine the full action space (discrete)
-        self.all_actions = list(range(-8, 9))  # [-8, -7, ..., 8]
+        self.all_actions = list(range(-6, 4))
 
     def _discretize_state(self, state: np.ndarray) -> Tuple[Tuple[int, int], int]:
         """
@@ -67,7 +68,7 @@ class Agent:
 
     def _xt_to_action(self, xt: float) -> int:
         """Convert continuous portfolio weight to discrete action (log_value)."""
-        return int(np.clip(round(np.log(abs(xt))), -8, 8))
+        return int(np.clip(round(np.log(abs(xt))), -6, 3))
 
     def _init_state_if_needed(self, state_key: Tuple[Tuple[int,int],int]):
         """
@@ -117,6 +118,7 @@ class Agent:
             episode_rewards = []
             episode_wealth = [state[0]]
             episode_actions = []
+            episode_td_errors = []  # Track TD errors for this episode
 
             while not done:
                 # --- 1) Select action via epsilon-greedy
@@ -147,9 +149,15 @@ class Agent:
                     next_q_values = self.q_table[next_state_key]
                     target = reward + self.gamma * max(next_q_values.values())
 
+                # Calculate TD error
+                td_error = target - current_q
+                # Convert TD error to log scale to handle extreme values
+                log_td_error = np.log(abs(td_error) + 1)  # Add 1 to avoid log(0)
+                episode_td_errors.append(log_td_error)  # Record log-scaled TD error
+                
                 # TD update
                 self.q_table[state_key][discrete_action] = current_q + \
-                    self.learning_rate * (target - current_q)
+                    self.learning_rate * td_error
 
                 # --- 4) (Optional) Update greedy policy for this state to reflect new Q
                 best_action = max(self.q_table[state_key], key=self.q_table[state_key].get)
@@ -164,12 +172,14 @@ class Agent:
             self.epsilons.append(self.epsilon)  # or decay epsilon here if desired
             self.wealth_history.append(episode_wealth)
             self.action_history.append(episode_actions)
+            self.td_errors.append(np.mean(episode_td_errors))  # Average TD error for this episode
 
         return {
             'returns': self.returns,
             'epsilons': self.epsilons,
             'wealth_history': self.wealth_history,
-            'action_history': self.action_history
+            'action_history': self.action_history,
+            'td_errors': self.td_errors
         }
 
     def save(self, path: str):
