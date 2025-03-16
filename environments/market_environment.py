@@ -84,7 +84,14 @@ class MarketEnvironment:
 
         # Calculate reward (based on CARA utility function)
         if done:
-            reward = (1 - np.exp(-self.alpha * self.wealth)) / self.alpha
+            # print(f"alpha: {self.alpha}, wealth: {self.wealth}")
+            if self.alpha * self.wealth <= -700:
+                multiplier = np.float64(1e+304)
+                print("Outflow!")
+            else:
+                multiplier = np.exp(-self.alpha * self.wealth)
+
+            reward = (1 - multiplier) / self.alpha
         else:
             reward = 0  # Zero reward for intermediate steps, utility reward only at final step
 
@@ -103,21 +110,3 @@ class MarketEnvironment:
         print(f'Step: {self.current_step}/{self.T}')
         print(f'Current Wealth: {self.wealth:.2f}')
 
-    @property
-    def action_space(self) -> Tuple[float, float]:
-        """Return the action space bounds.
-        
-        Action space is continuous values in R, representing the actual amount
-        of wealth invested in the risky asset. Negative values indicate short selling.
-        """
-        # Using a multiple of initial wealth as bounds for practical purposes
-        max_investment = self.initial_wealth * 5
-        return (-max_investment, max_investment)
-
-    @property
-    def state_space(self) -> int:
-        """Return the size of state space.
-        
-        State space contains two continuous values: current wealth and remaining time steps
-        """
-        return 2
