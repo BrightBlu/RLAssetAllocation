@@ -1,0 +1,31 @@
+{
+    "environment": {
+        "type": "market",
+        "risky_return_a": 0.05,
+        "risky_return_b": 0.01,
+        "risky_return_p": 0.5,
+        "risk_free_rate": 0.02,
+        "alpha": 1,
+        "gamma": 0.9,
+        "T": 10,
+        "initial_wealth": 1
+    },
+    "agent": {
+        "type": "qlearning",
+        "learning_rate": 0.2,
+        "gamma": 0.5,
+        "epsilon": 0.05
+    },
+    "training": {
+        "n_episodes": 500000,
+        "save_interval": 1000,
+        "eval_interval": 500,
+        "random_seed": 42
+    },
+    "paths": {
+        "data_dir": "data",
+        "model_dir": "results/models",
+        "log_dir": "results/logs",
+        "plot_dir": "results/plots"
+    }
+}
