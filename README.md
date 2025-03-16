@@ -3,7 +3,7 @@
 ## Environment Setup and Running Instructions
 
 ### 1. Python Environment Requirements
-- Python 3.8 or higher version
+- Python 3.9 or higher version
 - Recommended to use virtual environment for project dependencies management
 
 ### 2. Environment Setup Steps
@@ -16,6 +16,10 @@ cd RLAssetAllocation
 
 2. Create and activate virtual environment:
 ```bash
+You can simply run install.bat to create virtual environment and install dependences in requirements.txt
+Note that you may need to adjust your python path in install.bat according to your OS environment setting.
+
+Or you may use below commands:
 # Create virtual environment
 python -m venv venv
 
@@ -28,18 +32,18 @@ venv\Scripts\activate
 
 3. Install project dependencies:
 ```bash
-pip install -e .
+venv\Scripts\pip install -r requirements.txt
 ```
 
 ### 3. Running Tests
 Run all test cases:
 ```bash
-pytest
+venv\scripts\python -m pytest
 ```
 
 Run specific test file:
 ```bash
-pytest tests/test_environments/test_market_environment.py
+venv\scripts\python -m pytest tests/test_environments/test_market_environment.py
 ```
 
 ### 4. Running Main Program
