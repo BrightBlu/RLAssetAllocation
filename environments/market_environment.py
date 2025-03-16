@@ -33,6 +33,7 @@ class MarketEnvironment:
         self.gamma = env_config.get('gamma', 0.99)
         self.T = env_config.get('T', 10)
         self.initial_wealth = env_config.get('initial_wealth', 1)
+        self.instant_reward = env_config.get('instant_reward', False)
         
         self.current_step = 0
         self.wealth = self.initial_wealth
@@ -91,7 +92,10 @@ class MarketEnvironment:
 
             reward = (1 - multiplier) / self.alpha
         else:
-            reward = 0  # Zero reward for intermediate steps, utility reward only at final step
+            if self.instant_reward:
+                reward =  1 / (1 + np.exp(-portfolio_return)) - 0.5
+            else:
+                reward = 0
 
         # Prepare observation and info
         observation = np.array([self.wealth, self.T - self.current_step], dtype=np.float32)
