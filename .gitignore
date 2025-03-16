@@ -9,3 +9,4 @@ environments/__pycache__
 *.pyo
 *.pyd
 __pycache__/
+venv/
