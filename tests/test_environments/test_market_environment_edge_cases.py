@@ -27,12 +27,14 @@ def test_extreme_market_conditions(env):
     
     # Test with full investment in risky asset
     observation, reward, done, info = env.step(1.0)
-    assert 0 <= info['portfolio_return'] <= 2.0  # Return should be between 0% and 200%
-    
+    max_return = max(env.risky_return_a, env.risky_return_b)
+    min_return = min(env.risky_return_a, env.risky_return_b)
+    assert min_return <= info['portfolio_return'] <= max_return  # Return should be between a and b
+
     # Test with no investment in risky asset
     env.reset()
     observation, reward, done, info = env.step(0.0)
-    assert info['portfolio_return'] == pytest.approx(1.001)  # Should get risk-free return
+    assert info['portfolio_return'] == pytest.approx(env.risk_free_rate)  # Should get risk-free return
 
 def test_wealth_preservation(env):
     """Test wealth preservation under conservative strategy."""
