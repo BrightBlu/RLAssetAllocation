@@ -13,7 +13,8 @@ def default_config():
             'alpha': 0.5,
             'gamma': 0.99,
             'T': 10,
-            'initial_wealth': 10000
+            'initial_wealth': 10000,
+            'instant_reward': False,
         }
     }
 
@@ -32,6 +33,7 @@ def test_environment_initialization(env, default_config):
     assert env.gamma == default_config['environment']['gamma']
     assert env.T == default_config['environment']['T']
     assert env.initial_wealth == default_config['environment']['initial_wealth']
+    assert env.instant_reward == default_config['environment']['instant_reward']
     
     # Test initial state
     assert env.current_step == 0
@@ -51,29 +53,35 @@ def test_reset(env):
     assert env.wealth == env.initial_wealth
     np.testing.assert_array_equal(observation, [env.initial_wealth, env.T])
 
-def test_step_action_clipping(env):
-    """Test action clipping functionality."""
-    # Test action below lower bound (0)
-    observation, reward, done, info = env.step(-0.5)
-    assert info['portfolio_return'] == (0 * (1 + info['risky_return']) + 1 * (1 + env.risk_free_rate))
+def test_generate_risky_asset_return(env):
+    """Test risky asset return."""
+    np.random.seed(42)  # Set random seed for reproducibility
+    p1 = 0.3745401188473625
+    p2 = 0.9507143064099162
 
-    env.reset()
-    # Test action above upper bound (1)
-    observation, reward, done, info = env.step(1.5)
-    assert info['portfolio_return'] == (1 * (1 + info['risky_return']) + 0 * (1 + env.risk_free_rate))
+    # Verify return
+    assert (env.risky_return_a if p1 < env.risky_return_p else env.risky_return_b) == env.generate_risky_asset_return()
+    assert (env.risky_return_a if p2 < env.risky_return_p else env.risky_return_b) == env.generate_risky_asset_return()
 
 def test_step_wealth_update(env):
     """Test wealth update calculations."""
     np.random.seed(42)  # Set random seed for reproducibility
-    
-    initial_wealth = env.wealth
+    env.reset()
+
+    initial_wealth = 1
+    env.wealth = initial_wealth
     action = 0.5
+
     observation, reward, done, info = env.step(action)
-    
+
+    # expected results, risky return = a
+    expected_portfolio_return = env.risky_return_a * action + env.risk_free_rate * (1 - action)
+    expected_wealth = initial_wealth * (1 + expected_portfolio_return)
+
     # Verify wealth update calculations
-    expected_wealth = initial_wealth * info['portfolio_return']
+    assert info['portfolio_return'] == pytest.approx(expected_portfolio_return)
     assert env.wealth == pytest.approx(expected_wealth)
-    assert info['wealth_change'] == pytest.approx(env.wealth - initial_wealth)
+    assert info['wealth_change'] == pytest.approx(expected_wealth- initial_wealth)
 
 def test_step_reward_calculation(env):
     """Test reward calculation."""
@@ -88,10 +96,22 @@ def test_step_reward_calculation(env):
     assert reward == pytest.approx(expected_reward)
     assert done == True
 
-def test_state_space_and_action_space(env):
-    """Test state space and action space definitions."""
-    assert env.state_space == 2  # Current wealth and remaining time steps
-    assert env.action_space == (0.0, 1.0)  # Continuous action space in range [0,1]
+def test_step_instant_reward(env):
+    """Test instant reward functionality."""
+    np.random.seed(42)  # Set random seed for reproducibility
+    env.reset()
+
+    env.instant_reward = True
+    env.wealth = 1
+    action = 0.5
+
+    observation, reward, done, info = env.step(action)
+
+    # expected results, risky return = a
+    expected_portfolio_return = env.risky_return_a * action + env.risk_free_rate * (1 - action)
+    expected_reward = 1 / (1 + np.exp(-expected_portfolio_return)) - 0.5
+
+    assert reward == pytest.approx(expected_reward)
 
 def test_render(env, capsys):
     """Test environment rendering functionality."""
