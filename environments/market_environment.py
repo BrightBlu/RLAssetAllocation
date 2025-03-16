@@ -84,10 +84,8 @@ class MarketEnvironment:
 
         # Calculate reward (based on CARA utility function)
         if done:
-            # print(f"alpha: {self.alpha}, wealth: {self.wealth}")
             if self.alpha * self.wealth <= -700:
                 multiplier = np.float64(1e+304)
-                print("Outflow!")
             else:
                 multiplier = np.exp(-self.alpha * self.wealth)
 
@@ -109,4 +107,3 @@ class MarketEnvironment:
         """Render the current state of the environment."""
         print(f'Step: {self.current_step}/{self.T}')
         print(f'Current Wealth: {self.wealth:.2f}')
-
