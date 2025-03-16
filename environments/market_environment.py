@@ -48,6 +48,15 @@ class MarketEnvironment:
         self.wealth = self.initial_wealth
         return np.array([self.wealth, self.T - self.current_step])
 
+    def generate_risky_asset_return(self) -> float:
+        """Get risky asset return based on Y(t) = a with prob=p and b with prop=(1-p)
+
+        Returns:
+            float: risky_return_a or risky_return_b randomly
+        """
+        risky_return = self.risky_return_a if np.random.random() < self.risky_return_p else self.risky_return_b
+        return risky_return
+
     def step(self, action: float) -> Tuple[np.ndarray, float, bool, Dict]:
         """Execute an action and return the result.
 
@@ -62,7 +71,7 @@ class MarketEnvironment:
             - Dictionary of additional information
         """
         # Generate risky asset return
-        risky_return = self.risky_return_a if np.random.random() < self.risky_return_p else self.risky_return_b
+        risky_return = self.generate_risky_asset_return()
 
         # Calculate portfolio return
         # action represents the amount of wealth invested in risky asset (can be negative for short selling)
