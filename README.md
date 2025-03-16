@@ -15,11 +15,11 @@ cd RLAssetAllocation
 ```
 
 2. Create and activate virtual environment:
-```bash
-You can simply run install.bat to create virtual environment and install dependences in requirements.txt
-Note that you may need to adjust your python path in install.bat according to your OS environment setting.
 
+You can simply run install.bat to create virtual environment and install dependencies listed in requirements.txt
+Note that you may need to adjust your python path in install.bat according to your OS environment setting.
 Or you may use below commands:
+```bash
 # Create virtual environment
 python -m venv venv
 
