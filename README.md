@@ -16,7 +16,7 @@ cd RLAssetAllocation
 
 2. Create and activate virtual environment:
 
-You can simply run install.bat to create virtual environment and install dependencies listed in requirements.txt
+You can simply run install.bat to create virtual environment and install dependencies listed in requirements.txt. 
 Note that you may need to adjust your python path in install.bat according to your OS environment setting.
 Or you may use below commands:
 ```bash
@@ -54,10 +54,10 @@ venv\scripts\python -m pytest tests/test_environments/test_market_environment.py
 2. Run training program:
 ```bash
 # Run with default configuration
-python main.py
+venv\scripts\python main.py
 
 # Run with custom configuration
-python main.py --config configs/custom/my_config.json
+venv\scripts\python main.py --config configs/custom/my_config.json
 ```
 
 ## Project Structure
