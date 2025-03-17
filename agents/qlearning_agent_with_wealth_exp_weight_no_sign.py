@@ -11,17 +11,29 @@ class Agent:
         agent_config = config.get('agent', {})
         env_config = config.get('environment', {})
         
-        self.epsilon = agent_config.get('epsilon', 0.1)
-        self.gamma = agent_config.get('gamma', 0.99)
-        self.learning_rate = agent_config.get('learning_rate', 0.01)
+        # Initial values for epsilon and learning rate
+        self.initial_epsilon = agent_config.get('epsilon', 0.9)
+        self.min_epsilon = agent_config.get('min_epsilon', 0.01)
+        self.epsilon_decay = agent_config.get('epsilon_decay', 0.99995)
+        self.epsilon = self.initial_epsilon
         
+        self.initial_lr = agent_config.get('learning_rate', 0.1)
+        self.min_lr = agent_config.get('min_learning_rate', 0.001)
+        self.lr_decay = agent_config.get('learning_rate_decay', 0.99995)
+        self.learning_rate = self.initial_lr
+        
+        self.gamma = agent_config.get('gamma', 0.99)
         self.initial_wealth = env_config.get('initial_wealth', 1)
         
         # Determine action sign based on market parameters
-        risky_return_a = env_config.get('risky_return_a', 0.05)
-        risky_return_b = env_config.get('risky_return_b', 0.01)
-        risk_free_rate = env_config.get('risk_free_rate', 0.02)
-        self.action_sign = 1 if (risky_return_b - risk_free_rate) * (risky_return_b - risky_return_a) > 0 else 0
+        self.risky_return_a = env_config.get('risky_return_a', 0.05)
+        self.risky_return_b = env_config.get('risky_return_b', 0.01)
+        self.risk_free_rate = env_config.get('risk_free_rate', 0.02)
+        self.risky_return_p = env_config.get('risky_return_p', 0.05)
+        self.T = env_config.get('T', 10)
+        self.alpha = env_config.get('alpha', 0.1)
+        self.action_sign = 1 if (self.risk_free_rate - self.risky_return_b)*(1 - self.risky_return_p) < self.risky_return_p * (self.risky_return_a - self.risk_free_rate) else 0
+
         
         # State -> (action -> Q-value)
         self.q_table: Dict[Tuple[int, int], Dict[int, float]] = {}
@@ -36,7 +48,18 @@ class Agent:
         self.td_errors: List[float] = []  # Track TD errors for each episode
         
         # Predefine the full action space (discrete)
-        self.all_actions = list(range(-6, 4))
+        self.action_upper_bound = env_config.get('action_upper_bound', 3)
+        self.action_lower_bound = env_config.get('action_lower_bound', -3)
+        self.action_space_shift = env_config.get('action_space_shift', False)
+
+        self.state_upper_bound = env_config.get('state_upper_bound', 2)
+        self.state_lower_bound = env_config.get('state_lower_bound', -2)
+
+        self.all_actions = list(range(self.action_lower_bound, self.action_upper_bound + 1))
+
+        if self.action_space_shift:
+            self.action_shift_k = np.log(1+self.risk_free_rate)
+            self.action_shift_b = - (self.T - 1) * np.log(1+self.risk_free_rate) + np.log(np.log(((self.risk_free_rate - self.risky_return_b)*(1-self.risky_return_p)/(self.risky_return_p*(self.risky_return_a-self.risk_free_rate))))/(self.alpha * (self.risky_return_b - self.risky_return_a)))
 
     def _discretize_state(self, state: np.ndarray) -> Tuple[Tuple[int, int], int]:
         """
@@ -46,29 +69,36 @@ class Agent:
         """
         state_value = state[0]
         time_step = int(state[1])
-        
+
         if state_value >= 0:
             sign = 1
-            # log_value = np.clip(round(np.log(state_value)), -2, 2)
-            log_value = 1
+            log_value = np.clip(round(np.log(state_value)), self.state_lower_bound, self.state_upper_bound)
         else:
-            # sign = 0
-            # log_value = np.clip(round(np.log(abs(state_value))), -2, 2)
-            sign = 1
-            log_value = 1
+            sign = 0
+            log_value = np.clip(round(np.log(abs(state_value))), self.state_lower_bound, self.state_upper_bound)
         
         return (sign, int(log_value)), time_step
 
     def _action_to_xt(self, log_value: int) -> float:
         """Convert discrete action (log_value) to continuous portfolio weight."""
-        if self.action_sign == 1:
-            return np.exp(log_value)
-        else:
-            return -np.exp(log_value)
+        if self.action_space_shift:
+            if self.action_sign == 1:
+                return np.exp(self.action_shift_k * log_value + self.action_shift_b)
+            else:
+                return -np.exp(self.action_shift_k * log_value + self.action_shift_b)
+
+        else:    
+            if self.action_sign == 1:
+                return np.exp(log_value)
+            else:
+                return -np.exp(log_value)
 
     def _xt_to_action(self, xt: float) -> int:
         """Convert continuous portfolio weight to discrete action (log_value)."""
-        return int(np.clip(round(np.log(abs(xt))), -6, 3))
+        if self.action_space_shift:
+            return int(np.clip(round(np.log(abs(xt)) / self.action_shift_k - self.action_shift_b / self.action_shift_k), self.action_lower_bound, self.action_upper_bound))
+        else:
+            return int(np.clip(round(np.log(abs(xt))), self.action_lower_bound, self.action_upper_bound))
 
     def _init_state_if_needed(self, state_key: Tuple[Tuple[int,int],int]):
         """
@@ -167,9 +197,13 @@ class Agent:
                 state = next_state
                 # print(f"Episode {episode}, Step {env.current_step}, State: {state_key}, Action: {discrete_action}, Reward: {reward}")
 
+            # Decay epsilon and learning rate
+            self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
+            self.learning_rate = max(self.min_lr, self.learning_rate * self.lr_decay)
+            
             # Collect some stats
             self.returns.append(sum(episode_rewards))
-            self.epsilons.append(self.epsilon)  # or decay epsilon here if desired
+            self.epsilons.append(self.epsilon)
             self.wealth_history.append(episode_wealth)
             self.action_history.append(episode_actions)
             self.td_errors.append(np.mean(episode_td_errors))  # Average TD error for this episode
