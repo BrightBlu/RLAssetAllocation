@@ -72,24 +72,27 @@ python train.py --config configs/qlearning_with_wealth_exp_weight_no_sign.json
 ## Project Structure
 
 ```
-├── agents/                     # TD algorithm implementations
-│   ├── dqn_agent               # Deep Q-Network
-│   ├── mc_agent                # Monte Carlo
-│   ├── qlearning_agent         # Q-Learning variants
-│   ├── sarsa_agent             # SARSA
-│   └── td0_agent               # TD(0)
-├── configs/                    # Algorithm configurations
+├── agents/                                   # TD algorithm implementations
+│   ├── dqn_agent                             # Deep Q-Network
+│   ├── mc_agent                              # Monte Carlo
+│   ├── qlearning_agent                       # Q-Learning variants
+│   ├── sarsa_agent                           # SARSA
+│   └── td0_agent                             # TD(0)
+├── configs/                                  # Algorithm configurations
 │   └── [algorithm_specific_configs].json
-├── environments/               # Environment implementation
-│   ├── __init__.py             # Environment initialization
-│   └── market_environment.py   # Market environment
-├── experiment/                 # Experimental results
-│   └── experiment_*/           # Results for each experiment
-├── tests/                      # Unit tests
-│   └── test_agents/            # Unit test cases for agents
-│   └── test_environments/      # Unit test cases for environments
-└── utils/                      # Utility functions
-    └── visualization.py        # Result visualization
+├── environments/                             # Environment implementation
+│   ├── __init__.py                           # Environment initialization
+│   └── market_environment.py                 # Market environment
+├── experiment/                               # Experimental results
+│   └── experiment_*/                         # Results for each experiment
+├── tests/                                    # Unit tests
+│   └── test_agents/                          # Unit test cases for agents
+│   └── test_environments/                    # Unit test cases for environments
+├── utils/                                    # Utility functions
+│   └── visualization.py                      # Result visualization
+├── environment_simulation.ipynb              # To simulate market environment for checking
+├── extract_results.py                        # To extract and analyze Q-table and policy information
+└── train.py                                  # Main training program
 ```
 
 ## Main Components
