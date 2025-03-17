@@ -124,7 +124,7 @@ python extract_results.py model.npy
 2. **environments/**: Market environment implementation
    - State space: wealth and time
    - Action space: asset allocation decisions
-   - Reward function: final return on investment with CARA
+   - Reward function: final return on investment with utility function of CARA
 
 3. **configs/**: Algorithm-specific configurations
    - Learning rates and discount factors
