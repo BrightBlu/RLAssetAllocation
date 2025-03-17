@@ -2,7 +2,13 @@
 
 This project implements and evaluates various Temporal Difference (TD) learning algorithms for asset allocation in financial markets. The project is now complete with multiple algorithms implemented and extensive experimental results.
 
+## Authors
+WU, Yuheng (yuheng.wu@connect.ust.hk) 21107083
+
+FAN, Kwan Wai (kwfanaa@connect.ust.hk) 05037383
+
 ## Project Status
+The repository is for the assignment 1 of MAFS5370/MSBD6000M Spring 2025.
 
 All planned algorithms have been implemented and evaluated:
 - Q-Learning with different variants (wealth-based, constant/exponential weights)
@@ -133,7 +139,7 @@ The project includes extensive experiments comparing different algorithms:
 - Performance comparison under various market conditions
 - Analysis of wealth growth trajectories
 - Evaluation of different weight schemes
-- Impact of wealth consideration on decision making
+- Impact of wealth consideration on decision-making
 - Comparison of learning stability across algorithms
 
 Detailed results and analysis can be found in the `experiment/` directory.
