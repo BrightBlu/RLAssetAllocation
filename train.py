@@ -70,7 +70,7 @@ def save_results(returns, epsilons, wealth_history, action_history, td_errors, e
 def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Asset Allocation Reinforcement Learning Training')
-    parser.add_argument('--config', type=str, default='configs/mc.json',
+    parser.add_argument('--config', type=str, default='configs/qlearning_with_wealth_exp_weight_no_sign.json',
                         help='Configuration file path')
     args = parser.parse_args()
     
