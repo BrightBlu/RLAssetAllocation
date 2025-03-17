@@ -1,8 +1,5 @@
-rl_asset_allocation.egg-info/dependency_links.txt
-rl_asset_allocation.egg-info/PKG-INFO
-rl_asset_allocation.egg-info/requires.txt
-rl_asset_allocation.egg-info/SOURCES.txt
-rl_asset_allocation.egg-info/top_level.txt
+rl_asset_allocation.egg-info/
+results/
 agents/__pycache__
 environments/__pycache__
 *.pyc
@@ -10,3 +7,4 @@ environments/__pycache__
 *.pyd
 __pycache__/
 venv/
+.DS_Store
