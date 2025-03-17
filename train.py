@@ -42,7 +42,7 @@ def get_next_run_dir(config_path):
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir
 
-def save_results(returns, epsilons, wealth_history, action_history, td_errors, episode, save_dir):
+def save_results(returns, epsilons, wealth_history, action_history, td_errors, episode, save_dir, clip_returns):
     """Save training results and generate visualizations."""
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -63,7 +63,7 @@ def save_results(returns, epsilons, wealth_history, action_history, td_errors, e
     }
     
     from utils.visualization import plot_training_metrics
-    plot_training_metrics(metrics, str(save_dir / f'training_metrics_ep{episode}.png'))
+    plot_training_metrics(metrics, str(save_dir / f'training_metrics_ep{episode}.png'), clip_returns=clip_returns)
     
 
 
@@ -86,20 +86,24 @@ def main():
     
     # Initialize environment and agent
     env = MarketEnvironment(config)
-    if config.get('agent', {}).get('type') == 'mc':
-        from agents.mc_agent import Agent
-    if config.get('agent', {}).get('type') =='sarsa':
-        from agents.sarsa_agent import Agent
-    if config.get('agent', {}).get('type') =='qlearning':
-        from agents.qlearning_agent import Agent
-    if config.get('agent', {}).get('type') =='dqn':
-        from agents.dqn_agent import Agent
+    if config.get('agent', {}).get('type') == 'mc_ww_ew_ns':
+        from agents.mc_agent_with_wealth_exp_weight_no_sign import Agent
+    if config.get('agent', {}).get('type') =='sarsa_ew_ns':
+        from agents.sarsa_agent_with_wealth_exp_weight_no_sign import Agent
+    if config.get('agent', {}).get('type') =='qlearning_ew_ew_bs':
+        from agents.qlearning_agent_with_wealth_exp_weight_bi_sign import Agent
     if config.get('agent', {}).get('type') =='qlearning_nw_ew_ns':
         from agents.qlearning_agent_no_wealth_exp_weight_no_sign import Agent
     if config.get('agent', {}).get('type') =='qlearning_nw_cw_bs':
         from agents.qlearning_agent_no_wealth_const_weight_bi_sign import Agent
     if config.get('agent', {}).get('type') =='qlearning_nwt_cw_ns':
         from agents.qlearning_agent_no_wealth_no_t_const_weight_no_sign import Agent
+    if config.get('agent', {}).get('type') =='dqn_ww_ew_ns':
+        from agents.dqn_agent_with_wealth_exp_weight_no_sign import Agent
+    if config.get('agent', {}).get('type') =='qlearning_ww_ew_ns':
+        from agents.qlearning_agent_with_wealth_exp_weight_no_sign import Agent
+    if config.get('agent', {}).get('type') =='td0_ww_ew_ns':
+        from agents.td0_agent_with_wealth_exp_weight_no_sign import Agent
     
     agent = Agent(config)
     
@@ -111,7 +115,8 @@ def main():
     returns, epsilons, wealth_history, action_history, td_errors = train(env, agent, n_episodes)
     
     # Save final results
-    save_results(returns, epsilons, wealth_history, action_history, td_errors, n_episodes, run_dir)
+    clip_returns = config.get('training', {}).get('clip_returns', False)
+    save_results(returns, epsilons, wealth_history, action_history, td_errors, n_episodes, run_dir, clip_returns)
     
     # Save trained agent and config
     agent.save(str(run_dir / 'model.npy'))
