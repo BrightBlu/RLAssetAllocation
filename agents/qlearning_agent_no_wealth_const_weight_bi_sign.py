@@ -32,7 +32,8 @@ class Agent:
         self.risky_return_p = env_config.get('risky_return_p', 0.05)
         self.T = env_config.get('T', 10)
         self.alpha = env_config.get('alpha', 0.1)
-        self.action_sign = 1 if (self.risky_return_b - self.risk_free_rate) * (self.risky_return_b - self.risky_return_a) > 0 else 0
+        self.action_sign = 1 if (self.risk_free_rate - self.risky_return_b)*(1 - self.risky_return_p) < self.risky_return_p * (self.risky_return_a - self.risk_free_rate) else 0
+        self.action_value = env_config.get('action_value', 300)
 
         
         # State -> (action -> Q-value)
@@ -52,11 +53,10 @@ class Agent:
         self.action_lower_bound = env_config.get('action_lower_bound', -3)
         self.action_space_shift = env_config.get('action_space_shift', False)
 
-        self.all_actions = list(range(self.action_lower_bound, self.action_upper_bound + 1))
+        self.all_actions = [0,1]
 
         if self.action_space_shift:
-            # self.action_shift_k = np.log(1+self.risk_free_rate)
-            self.action_shift_k = 0.6
+            self.action_shift_k = np.log(1+self.risk_free_rate)
             self.action_shift_b = - (self.T - 1) * np.log(1+self.risk_free_rate) + np.log(np.log(((self.risk_free_rate - self.risky_return_b)*(1-self.risky_return_p)/(self.risky_return_p*(self.risky_return_a-self.risk_free_rate))))/(self.alpha * (self.risky_return_b - self.risky_return_a)))
 
     def _discretize_state(self, state: np.ndarray) -> Tuple[Tuple[int, int], int]:
@@ -80,26 +80,20 @@ class Agent:
         
         return (sign, int(log_value)), time_step
 
-    def _action_to_xt(self, log_value: int) -> float:
+    def _action_to_xt(self, action_value: int) -> float:
         """Convert discrete action (log_value) to continuous portfolio weight."""
-        if self.action_space_shift:
-            if self.action_sign == 1:
-                return np.exp(self.action_shift_k * log_value + self.action_shift_b)
-            else:
-                return -np.exp(k * log_value + b)
+        if action_value > 0:
+            return self.action_value
+        else:
+            return -self.action_value
 
-        else:    
-            if self.action_sign == 1:
-                return np.exp(log_value)
-            else:
-                return -np.exp(log_value)
 
     def _xt_to_action(self, xt: float) -> int:
         """Convert continuous portfolio weight to discrete action (log_value)."""
-        if self.action_space_shift:
-            return int(np.clip(round(np.log(abs(xt)) / self.action_shift_k - self.action_shift_b / self.action_shift_k), self.action_lower_bound, self.action_upper_bound))
+        if xt > 0:
+            return 1
         else:
-            return int(np.clip(round(np.log(abs(xt))), self.action_lower_bound, self.action_upper_bound))
+            return 0
 
     def _init_state_if_needed(self, state_key: Tuple[Tuple[int,int],int]):
         """
@@ -198,6 +192,8 @@ class Agent:
                 state = next_state
                 # print(f"Episode {episode}, Step {env.current_step}, State: {state_key}, Action: {discrete_action}, Reward: {reward}")
 
+
+
             # Decay epsilon and learning rate
             self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
             self.learning_rate = max(self.min_lr, self.learning_rate * self.lr_decay)
@@ -208,6 +204,7 @@ class Agent:
             self.wealth_history.append(episode_wealth)
             self.action_history.append(episode_actions)
             self.td_errors.append(np.mean(episode_td_errors))  # Average TD error for this episode
+
 
         return {
             'returns': self.returns,

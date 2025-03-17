@@ -94,8 +94,12 @@ def main():
         from agents.qlearning_agent import Agent
     if config.get('agent', {}).get('type') =='dqn':
         from agents.dqn_agent import Agent
-    if config.get('agent', {}).get('type') =='qlearning_nw_cws':
-        from agents.qlearning_agent_no_wealth_const_weight_sign import Agent
+    if config.get('agent', {}).get('type') =='qlearning_nw_ew_ns':
+        from agents.qlearning_agent_no_wealth_exp_weight_no_sign import Agent
+    if config.get('agent', {}).get('type') =='qlearning_nw_cw_bs':
+        from agents.qlearning_agent_no_wealth_const_weight_bi_sign import Agent
+    if config.get('agent', {}).get('type') =='qlearning_nwt_cw_ns':
+        from agents.qlearning_agent_no_wealth_no_t_const_weight_no_sign import Agent
     
     agent = Agent(config)
     
