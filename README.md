@@ -8,7 +8,7 @@ WU, Yuheng (yuheng.wu@connect.ust.hk) 21107083
 FAN, Kwan Wai (kwfanaa@connect.ust.hk) 05037383
 
 ## Project Status
-The repository is for the assignment 1 of MAFS5370/MSBD6000M Spring 2025.
+The repository is for the Assignment 1 of MAFS5370/MSBD6000M Spring 2025.
 
 All planned algorithms have been implemented and evaluated:
 - Q-Learning with different variants (wealth-based, constant/exponential weights)
@@ -45,6 +45,7 @@ conda activate rl_asset
 3. Install project dependencies:
 ```bash
 conda install --file requirements.txt
+pip install -e .
 ```
 
 ### 3. Running Tests
@@ -69,10 +70,25 @@ python -m pytest tests/test_environments/test_market_environment.py
 python train.py --config configs/qlearning_with_wealth_exp_weight_no_sign.json
 ```
 
+3. View training results:
+   - Training metrics, plots, and action histories are saved in `experiment/`
+   - Results can be visualized using the provided visualization tools
+
+4. Extract Q-Table and Policy:
+   - After training, run the following command to extract Q-Table and Policy:
+
+```bash
+# Extract model results
+python extract_results.py model.npy
+```
+
+5. Simulate Market Environment:
+   To simulate market environment for checking, you can just go for the `environment_simulation.ipynb` file, there are some predefined examples.
+
 ## Project Structure
 
 ```
-├── agents/                                   # TD algorithm implementations
+├── agents/                                   # RL algorithm implementations
 │   ├── dqn_agent                             # Deep Q-Network
 │   ├── mc_agent                              # Monte Carlo
 │   ├── qlearning_agent                       # Q-Learning variants
@@ -102,18 +118,21 @@ python train.py --config configs/qlearning_with_wealth_exp_weight_no_sign.json
    - Q-learning with different weight schemes
    - SARSA implementation
    - DQN with neural network
-   - Monte Carlo learning
+   - Monte-Carlo learning
    - TD(0) implementation
 
 2. **environments/**: Market environment implementation
-   - State space: market prices, positions, wealth
+   - State space: wealth and time
    - Action space: asset allocation decisions
-   - Reward function: return on investment
+   - Reward function: final return on investment with CARA
 
 3. **configs/**: Algorithm-specific configurations
    - Learning rates and discount factors
    - Exploration parameters
-   - Neural network architectures (for DQN)
+   - Action Space and State Space settings
+   - Instant Reward setting
+   - Training episodes
+   - Random seed
 
 4. **experiment/**: Comprehensive experimental results
    - Training metrics
@@ -131,20 +150,24 @@ python train.py --config configs/qlearning_with_wealth_exp_weight_no_sign.json
 2. Run Training:
    - Execute training script with chosen config
    - Monitor training progress
-   - Results are saved in `experiment/`
+   - Results are saved in `results/`
+
+3. Replicate Experiments:
+   - Choos from given experiments in `experiment/`
+   - Use config in `experiment/[choosen_experiment]/config.json`
 
 3. Analyze Results:
    - Use visualization tools in `utils/`
-   - Compare performance across algorithms
-   - Examine wealth growth and action patterns
+   - Extrract Q-Table and Policy
+   - Simulate market environment
 
 ## Experimental Results
 
-The project includes extensive experiments comparing different algorithms:
-- Performance comparison under various market conditions
-- Analysis of wealth growth trajectories
-- Evaluation of different weight schemes
-- Impact of wealth consideration on decision-making
-- Comparison of learning stability across algorithms
+The project includes extensive experiments results with following information:
+- TD Error trajectories
+- Reward trajectories
+- Q-Table
+- Final Policy
+- Experiment configuration
 
 Detailed results and analysis can be found in the `experiment/` directory.
