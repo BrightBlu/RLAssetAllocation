@@ -10,26 +10,29 @@
         "T": 10,
         "action_value": 300,
         "initial_wealth": 1,
-        "action_upper_bound": 15,
-        "action_lower_bound": -5,
-        "action_space_shift": true,
+        "action_upper_bound": 7,
+        "action_lower_bound": 4,
+        "state_upper_bound": 2,
+        "state_lower_bound": -2,
+        "action_space_shift": false,
         "instant_reward": false
     },
     "agent": {
-        "type": "qlearning_nw_ew_ns",
-        "learning_rate": 0.01,
-        "min_learning_rate": 0.00001,
-        "learning_rate_decay": 0.999,
+        "type": "qlearning_ew_ew_bs",
+        "learning_rate": 0.3,
+        "min_learning_rate": 0.0001,
+        "learning_rate_decay": 0.99999,
         "gamma": 0.8,
-        "epsilon": 0.3,
+        "epsilon": 0.6,
         "min_epsilon": 0.001,
-        "epsilon_decay": 0.999999
+        "epsilon_decay": 0.99999
     },
     "training": {
-        "n_episodes": 100000,
+        "n_episodes": 1000000,
         "save_interval": 1000,
         "eval_interval": 500,
-        "random_seed": 233
+        "random_seed": 233,
+        "clip_returns": true
     },
     "paths": {
         "data_dir": "data",
