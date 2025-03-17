@@ -1,4 +1,4 @@
-# Reinforcement Learning Asset Allocation Project
+# Reinforcement Learning Approach for Solving Asset Allocation Problem
 
 This project implements and evaluates various Temporal Difference (TD) learning algorithms for asset allocation in financial markets. The project is now complete with multiple algorithms implemented and extensive experimental results.
 
@@ -72,22 +72,24 @@ python train.py --config configs/qlearning_with_wealth_exp_weight_no_sign.json
 ## Project Structure
 
 ```
-├── agents/                # TD algorithm implementations
-│   ├── dqn_agent          # Deep Q-Network
-│   ├── mc_agent           # Monte Carlo
-│   ├── qlearning_agent    # Q-Learning variants
-│   ├── sarsa_agent        # SARSA
-│   └── td0_agent          # TD(0)
-├── environments/          # Environment implementation
-│   ├── __init__.py        # Environment initialization
-│   └── market_environment.py # Market environment
-├── configs/               # Algorithm configurations
+├── agents/                     # TD algorithm implementations
+│   ├── dqn_agent               # Deep Q-Network
+│   ├── mc_agent                # Monte Carlo
+│   ├── qlearning_agent         # Q-Learning variants
+│   ├── sarsa_agent             # SARSA
+│   └── td0_agent               # TD(0)
+├── configs/                    # Algorithm configurations
 │   └── [algorithm_specific_configs].json
-├── experiment/           # Experimental results
-│   └── experiment_*/     # Results for each experiment
-├── tests/               # Unit tests
-└── utils/               # Utility functions
-    └── visualization.py # Result visualization
+├── environments/               # Environment implementation
+│   ├── __init__.py             # Environment initialization
+│   └── market_environment.py   # Market environment
+├── experiment/                 # Experimental results
+│   └── experiment_*/           # Results for each experiment
+├── tests/                      # Unit tests
+│   └── test_agents/            # Unit test cases for agents
+│   └── test_environments/      # Unit test cases for environments
+└── utils/                      # Utility functions
+    └── visualization.py        # Result visualization
 ```
 
 ## Main Components
@@ -143,4 +145,3 @@ The project includes extensive experiments comparing different algorithms:
 - Comparison of learning stability across algorithms
 
 Detailed results and analysis can be found in the `experiment/` directory.
-
